@@ -10,8 +10,9 @@ class Sle4442():
 
         self.SELECT = [0xff, 0xa4, 0x00, 0x00, 0x01, 0x06]
         self.READ = [0xff, 0xb0, 0x00]
-        self.READ_PROT = [0xff, 0x3a]
+        self.READ_PROT = [0xff, 0x3a, 0x00]
         self.VERIFY_PIN = [0xff, 0x20, 0x00, 0x00]
+        self.MODIFY_PIN = [0xff, 0x21, 0x00, 0x00]
         self.WRITE = [0xff, 0xd6,0x00]
 
         hresult, self.hcontext = SCardEstablishContext(SCARD_SCOPE_USER)
@@ -41,6 +42,19 @@ class Sle4442():
         
     def convert_sw_hex(self, sw):
         return hex(sw[0]), hex(sw[1])
+
+    def modify_pin(self, old_pin, new_pin):
+        """
+        not tested
+        """
+
+        len_new_pin = len(new_pin)
+        len_old_pin = len(old_pin)
+        len_tot= [len_old_pin + len_new_pin]
+        hresult, response = SCardTransmit(self.hcard, self.dwActiveProtocol, self.MODIFY_PIN + len_tot + old_pin + new_pin)
+        if hresult != SCARD_S_SUCCESS:
+            print('Failed to transmit: ' + SCardGetErrorMessage(hresult))
+        return True
 
     def verify_pin(self, pin):
         """
@@ -121,29 +135,6 @@ class Sle4442():
             return "?", "?"
         
         return self.convert_sw_hex(response[-2:]), response[0:-2]
-
-
-    def read_prot(self):
-        PIN_PROT = [False, False, False, False, False, False, False, False,
-                    False, False, False, False, False, False, False, False,
-                    False, False, False, False, False, False, False, False,
-                    False, False, False, False, False, False, False, False ]
-
-        hresult, response = SCardTransmit(self.hcard, self.dwActiveProtocol, self.READ_PROT)
-        if hresult != SCARD_S_SUCCESS:
-            print('Failed to transmit: ' + SCardGetErrorMessage(hresult))
-        print('Succeed to transmit READ_PROT: '+str(response[-2:]))
-        if (response[-2] == 144):
-            result = bin(response[0])[2:]+bin(response[1])[2:]+bin(response[2])[2:]+bin(response[3])[2:]
-            print(result)
-            for i in range(32):
-                if result[i] == "1":
-                    PIN_PROT[i] = True
-                elif result[i] == "0":
-                    PIN_PROT[i] = False
-                else:
-                    print('Cannot read protection bytes')
-            print(PIN_PROT)
 
 
     def disconnect(self):
